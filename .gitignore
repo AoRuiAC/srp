@@ -23,3 +23,6 @@ go.work.sum
 
 # env file
 .env
+
+# run file
+/ssh_host_*
