@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"os"
 	"time"
 
 	"github.com/pigeonligh/srp/pkg/proxy"
@@ -40,4 +41,26 @@ func (p *socketProvider) ProxyProvide(ctx context.Context, target string) (proxy
 		}, p.waitInterval)
 	}
 	return ret, nil
+}
+
+type SocketFile string
+
+func (f SocketFile) ConvertHostPortToSocket(host, port string) (string, bool) {
+	return string(f), true
+}
+
+func (SocketFile) SocketAlive(socket string) bool {
+	stat, _ := os.Stat(socket)
+	return stat != nil && !stat.IsDir()
+}
+
+type SocketNamer func(host, port string) string
+
+func (n SocketNamer) ConvertHostPortToSocket(host, port string) (string, bool) {
+	return n(host, port), true
+}
+
+func (SocketNamer) SocketAlive(socket string) bool {
+	stat, _ := os.Stat(socket)
+	return stat != nil && !stat.IsDir()
 }
