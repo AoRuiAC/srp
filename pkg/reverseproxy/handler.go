@@ -1,7 +1,6 @@
 package reverseproxy
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"net"
@@ -15,7 +14,6 @@ import (
 	"github.com/charmbracelet/ssh"
 	"github.com/pigeonligh/srp/pkg/auth"
 	"github.com/pigeonligh/srp/pkg/protocol"
-	"github.com/pigeonligh/srp/pkg/proxy"
 	gossh "golang.org/x/crypto/ssh"
 )
 
@@ -25,12 +23,10 @@ type Handler interface {
 
 	HandleSSHRequest(ctx ssh.Context, srv *ssh.Server, req *gossh.Request) (bool, []byte)
 
-	proxy.ProxyProvider
-	ProxyReadiness(_ context.Context, target string) bool
-
-	// ConvertBindAddressToSocket(target string) (string, bool)
-	// ConvertHostPortToSocket(host, port string) (string, bool)
-	// SocketAlive(socket string) bool
+	ConvertBindAddressToHostPort(bindAddress string) (string, string, bool)
+	ConvertHostPortToSocket(host, port string) (string, bool)
+	ConvertBindAddressToSocket(bindAddress string) (string, bool)
+	SocketAlive(socket string) bool
 }
 
 type handler struct {
@@ -230,30 +226,6 @@ func (h *handler) HandleSSHRequest(ctx ssh.Context, srv *ssh.Server, req *gossh.
 
 	log.Infof("Unknown request %v from user %v", req.Type, ctx.User())
 	return false, []byte{}
-}
-
-func (h *handler) ProxyProvide(ctx context.Context, target string) (proxy.Proxy, error) {
-	host, port, err := net.SplitHostPort(target)
-	if err != nil {
-		return nil, err
-	}
-	socket, ok := h.ConvertHostPortToSocket(host, port)
-	if !ok {
-		return nil, fmt.Errorf("invalid target: %v", target)
-	}
-	return proxy.UnixSocket(socket), nil
-}
-
-func (h *handler) ProxyReadiness(_ context.Context, target string) bool {
-	host, port, err := net.SplitHostPort(target)
-	if err != nil {
-		return false
-	}
-	socket, ok := h.ConvertHostPortToSocket(host, port)
-	if !ok {
-		return false
-	}
-	return h.SocketAlive(socket)
 }
 
 func handleConnection(c net.Conn, conn *gossh.ServerConn, target string) {

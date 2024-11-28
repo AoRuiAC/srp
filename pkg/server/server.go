@@ -36,14 +36,6 @@ func New(name string, options ...Option) (Server, error) {
 	for _, o := range options {
 		o(s)
 	}
-
-	if s.rp == nil {
-		return nil, fmt.Errorf("reverseproxy handler is a must")
-	}
-	if s.p == nil {
-		return nil, fmt.Errorf("proxy handler is a must")
-	}
-
 	return s, nil
 }
 

@@ -9,6 +9,7 @@ import (
 
 	"github.com/charmbracelet/wish"
 	"github.com/pigeonligh/srp/pkg/proxy"
+	"github.com/pigeonligh/srp/pkg/proxy/providers"
 	"github.com/pigeonligh/srp/pkg/reverseproxy"
 	"github.com/pigeonligh/srp/pkg/server"
 	"github.com/spf13/cobra"
@@ -27,7 +28,7 @@ func main() {
 			if err != nil {
 				log.Fatalln("Error:", err)
 			}
-			p := proxy.New(nil, nil, rp, true)
+			p := proxy.New(nil, nil, providers.SocketProvider(rp, 0), true)
 
 			s, err := server.New(
 				name,
