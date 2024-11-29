@@ -29,14 +29,14 @@ type server struct {
 	sshOptions []ssh.Option
 }
 
-func New(name string, options ...Option) (Server, error) {
+func New(name string, options ...Option) Server {
 	s := &server{
 		name: name,
 	}
 	for _, o := range options {
 		o(s)
 	}
-	return s, nil
+	return s
 }
 
 func (s *server) HandleSession(_ ssh.Handler) ssh.Handler {

@@ -21,7 +21,7 @@ var (
 
 func main() {
 	p := proxy.New(nil, nil, providers.TCPProvider, true)
-	s, err := server.New(
+	s := server.New(
 		name,
 		server.WithProxy(p),
 		server.WithSSHOptions(
@@ -29,9 +29,6 @@ func main() {
 			wish.WithAddress(address),
 		),
 	)
-	if err != nil {
-		log.Fatalln("Error:", err)
-	}
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
