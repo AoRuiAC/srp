@@ -1,10 +1,10 @@
 package https
 
 import (
-	"context"
-	"net"
 	"net/http"
 	"net/http/httputil"
+
+	"github.com/pigeonligh/srp/pkg/dialer"
 )
 
 type HandleOption func(*handler)
@@ -15,15 +15,15 @@ func WithDirector(d func(string) string) HandleOption {
 	}
 }
 
-func WithDial(d func(ctx context.Context, network, addr string) (net.Conn, error)) HandleOption {
+func WithDialer(d dialer.NetDialer) HandleOption {
 	return func(p *handler) {
-		p.dial = d
+		p.dialer = d
 	}
 }
 
 type handler struct {
 	director func(hostname string) string
-	dial     func(ctx context.Context, network, addr string) (net.Conn, error)
+	dialer   dialer.NetDialer
 }
 
 func Handler(options ...HandleOption) *handler {
@@ -36,11 +36,8 @@ func Handler(options ...HandleOption) *handler {
 			return hostname + ":80"
 		}
 	}
-	if p.dial == nil {
-		p.dial = func(ctx context.Context, network, addr string) (net.Conn, error) {
-			d := net.Dialer{}
-			return d.DialContext(ctx, network, addr)
-		}
+	if p.dialer == nil {
+		p.dialer = dialer.DefaultNetDialer
 	}
 	return p
 }
@@ -60,6 +57,6 @@ func (p *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	(&httputil.ReverseProxy{
 		Director:  func(r *http.Request) {},
-		Transport: &http.Transport{DialContext: p.dial},
+		Transport: &http.Transport{DialContext: p.dialer.DialContext},
 	}).ServeHTTP(w, r)
 }
