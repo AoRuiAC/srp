@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 
 	"github.com/pigeonligh/srp/pkg/nets"
+	"github.com/pigeonligh/srp/pkg/proxy"
+	"github.com/pigeonligh/srp/pkg/proxy/providers"
 )
 
 type HTTP struct {
@@ -44,4 +46,14 @@ func (s *HTTP) Run(ctx context.Context) error {
 	}
 
 	return nets.RunNetServer(ctx, server, l)
+}
+
+func (s *HTTP) Provider() proxy.ProxyProvider {
+	if s.Network == "unix" {
+		return providers.SocketProvider(providers.SocketFile(s.Address), 0)
+	}
+
+	return proxy.ProxyProviderFunc(func(ctx context.Context, target string) (proxy.Proxy, error) {
+		return proxy.Direct(s.Network, s.Address), nil
+	})
 }

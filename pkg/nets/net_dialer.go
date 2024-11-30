@@ -15,9 +15,7 @@ func (f NetDialerFunc) DialContext(ctx context.Context, network, addr string) (n
 	return f(ctx, network, addr)
 }
 
-var DefaultNetDialer NetDialer = NetDialerFunc(func(ctx context.Context, network, addr string) (net.Conn, error) {
-	return (&net.Dialer{}).DialContext(ctx, addr, network)
-})
+var DefaultNetDialer NetDialer = &net.Dialer{}
 
 func NetDialerWithConnModifier(d NetDialer, m func(net.Conn) net.Conn) NetDialer {
 	return NetDialerFunc(func(ctx context.Context, network, addr string) (net.Conn, error) {

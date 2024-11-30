@@ -30,10 +30,10 @@ func Handler(director HTTPDirector, netDialer nets.NetDialer) *handler {
 	return p
 }
 
-func (p *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	r.URL.Host = r.Host
 	hostname := r.URL.Hostname()
-	scheme, target := p.director(hostname)
+	scheme, target := h.director(hostname)
 	if scheme == "" || target == "" {
 		w.WriteHeader(http.StatusNotFound)
 		return
@@ -45,6 +45,6 @@ func (p *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	(&httputil.ReverseProxy{
 		Director:  func(r *http.Request) {},
-		Transport: &http.Transport{DialContext: p.dialer.DialContext},
+		Transport: &http.Transport{DialContext: h.dialer.DialContext},
 	}).ServeHTTP(w, r)
 }
