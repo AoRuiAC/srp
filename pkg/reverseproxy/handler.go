@@ -12,6 +12,7 @@ import (
 
 	"github.com/charmbracelet/ssh"
 	"github.com/pigeonligh/srp/pkg/auth"
+	"github.com/pigeonligh/srp/pkg/nets"
 	"github.com/pigeonligh/srp/pkg/protocol"
 	"github.com/sirupsen/logrus"
 	gossh "golang.org/x/crypto/ssh"
@@ -23,10 +24,9 @@ type Handler interface {
 
 	HandleSSHRequest(ctx ssh.Context, srv *ssh.Server, req *gossh.Request) (bool, []byte)
 
+	nets.SocketHandler
 	ConvertBindAddressToHostPort(bindAddress string) (string, string, bool)
-	ConvertHostPortToSocket(host, port string) (string, bool)
 	ConvertBindAddressToSocket(bindAddress string) (string, bool)
-	SocketAlive(socket string) bool
 }
 
 type handler struct {

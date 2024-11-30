@@ -7,20 +7,16 @@ import (
 	"os"
 	"time"
 
+	"github.com/pigeonligh/srp/pkg/nets"
 	"github.com/pigeonligh/srp/pkg/proxy"
 )
 
-type SocketHandler interface {
-	ConvertHostPortToSocket(host, port string) (string, bool)
-	SocketAlive(socket string) bool
-}
-
 type socketProvider struct {
-	h            SocketHandler
+	h            nets.SocketHandler
 	waitInterval time.Duration
 }
 
-func SocketProvider(h SocketHandler, waitInterval time.Duration) proxy.ProxyProvider {
+func SocketProvider(h nets.SocketHandler, waitInterval time.Duration) proxy.ProxyProvider {
 	return &socketProvider{h: h, waitInterval: waitInterval}
 }
 
