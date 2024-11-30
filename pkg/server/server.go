@@ -81,5 +81,6 @@ func (s *server) Run(ctx context.Context) error {
 		return fmt.Errorf("create SSH server: %w", err)
 	}
 
+	ctx = nets.ContextWithServerName(ctx, s.name)
 	return nets.RunNetServer(ctx, srv, nil)
 }

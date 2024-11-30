@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"log"
 	"net"
 	"net/http"
 	"net/http/httputil"
@@ -14,6 +13,7 @@ import (
 	"github.com/pigeonligh/srp/pkg/proxy/providers"
 	"github.com/pigeonligh/srp/pkg/reverseproxy"
 	"github.com/pigeonligh/srp/pkg/server"
+	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -26,7 +26,7 @@ var (
 func main() {
 	rp, err := reverseproxy.New(nil, nil, "")
 	if err != nil {
-		log.Fatalln("Error:", err)
+		logrus.Fatalln("Error:", err)
 	}
 	provider := providers.SocketProvider(rp, 0)
 	go func() {
@@ -62,6 +62,6 @@ func main() {
 	defer cancel()
 
 	if err := s.Run(ctx); err != nil {
-		log.Fatalln("Error:", err)
+		logrus.Fatalln("Error:", err)
 	}
 }

@@ -19,20 +19,23 @@ type HTTP struct {
 	Handler  http.Handler
 }
 
+func (s *HTTP) networkAddress() (string, string) {
+	if s.Network == "unix" && s.Address == "" {
+		dir, _ := os.MkdirTemp("", "srp-http")
+		s.Address = filepath.Join(dir, "server.sock")
+	}
+	if s.Network == "" {
+		s.Network = "tcp"
+	}
+	return s.Network, s.Address
+}
+
 func (s *HTTP) listen() (net.Listener, error) {
 	if s.Listener != nil {
 		return s.Listener, nil
 	}
-
-	if s.Network == "unix" && s.Address == "" {
-		dir, err := os.MkdirTemp("", "srp-http")
-		if err != nil {
-			return nil, err
-		}
-		s.Address = filepath.Join(dir, "server.sock")
-	}
-
-	return net.Listen(s.Network, s.Address)
+	network, address := s.networkAddress()
+	return net.Listen(network, address)
 }
 
 func (s *HTTP) Run(ctx context.Context) error {
@@ -40,20 +43,19 @@ func (s *HTTP) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-
 	server := &http.Server{
 		Handler: s.Handler,
 	}
-
+	ctx = nets.ContextWithServerName(ctx, "HTTP["+s.Address+"]")
 	return nets.RunNetServer(ctx, server, l)
 }
 
 func (s *HTTP) Provider() proxy.ProxyProvider {
-	if s.Network == "unix" {
-		return providers.SocketProvider(providers.SocketFile(s.Address), 0)
+	network, address := s.networkAddress()
+	if network == "unix" {
+		return providers.SocketProvider(providers.SocketFile(address), 0)
 	}
-
 	return proxy.ProxyProviderFunc(func(ctx context.Context, target string) (proxy.Proxy, error) {
-		return proxy.Direct(s.Network, s.Address), nil
+		return proxy.Direct(network, address), nil
 	})
 }

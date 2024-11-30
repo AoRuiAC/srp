@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -12,6 +11,7 @@ import (
 	"github.com/pigeonligh/srp/pkg/proxy/providers"
 	"github.com/pigeonligh/srp/pkg/reverseproxy"
 	"github.com/pigeonligh/srp/pkg/server"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -26,7 +26,7 @@ func main() {
 		Run: func(cmd *cobra.Command, args []string) {
 			rp, err := reverseproxy.New(nil, nil, socketDir)
 			if err != nil {
-				log.Fatalln("Error:", err)
+				logrus.Fatalln("Error:", err)
 			}
 			p := proxy.New(nil, nil, providers.SocketProvider(rp, 0), true)
 
@@ -44,7 +44,7 @@ func main() {
 			defer cancel()
 
 			if err := s.Run(ctx); err != nil {
-				log.Fatalln("Error:", err)
+				logrus.Fatalln("Error:", err)
 			}
 		},
 	}

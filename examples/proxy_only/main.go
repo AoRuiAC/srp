@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -11,6 +10,7 @@ import (
 	"github.com/pigeonligh/srp/pkg/proxy"
 	"github.com/pigeonligh/srp/pkg/proxy/providers"
 	"github.com/pigeonligh/srp/pkg/server"
+	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -34,6 +34,6 @@ func main() {
 	defer cancel()
 
 	if err := s.Run(ctx); err != nil {
-		log.Fatalln("Error:", err)
+		logrus.Fatalln("Error:", err)
 	}
 }

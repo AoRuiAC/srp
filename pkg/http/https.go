@@ -30,15 +30,13 @@ func (s *HTTPS) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-
 	cert, key, err := s.tls()
 	if err != nil {
 		return err
 	}
-
 	server := nets.WrapTLSServer(&http.Server{
 		Handler: s.Handler,
 	}, cert, key)
-
+	ctx = nets.ContextWithServerName(ctx, "HTTPS["+s.Address+"]")
 	return nets.RunNetServer(ctx, server, l)
 }

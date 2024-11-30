@@ -10,10 +10,10 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/ssh"
 	"github.com/pigeonligh/srp/pkg/auth"
 	"github.com/pigeonligh/srp/pkg/protocol"
+	"github.com/sirupsen/logrus"
 	gossh "golang.org/x/crypto/ssh"
 )
 
@@ -130,24 +130,24 @@ func (h *handler) SocketAlive(socket string) bool {
 func (h *handler) HandleSSHRequest(ctx ssh.Context, srv *ssh.Server, req *gossh.Request) (bool, []byte) {
 	authed, _ := ctx.Value(protocol.ContextKeyReverseProxyAuthed).(bool)
 	if !authed {
-		log.Infof("User %v is not allowed to handle reverse proxy request.", ctx.User())
+		logrus.Infof("User %v is not allowed to handle reverse proxy request.", ctx.User())
 		return false, []byte{}
 	}
 
 	conn := ctx.Value(ssh.ContextKeyConn).(*gossh.ServerConn)
 	switch req.Type {
 	case protocol.ForwardRequestType:
-		log.Infof("Handle reverse proxy request for user %v", ctx.User())
+		logrus.Infof("Handle reverse proxy request for user %v", ctx.User())
 
 		var reqPayload protocol.RemoteForwardRequest
 		if err := gossh.Unmarshal(req.Payload, &reqPayload); err != nil {
-			log.Errorf("Failed to parse payload for %v request: %v", req.Type, err)
+			logrus.Errorf("Failed to parse payload for %v request: %v", req.Type, err)
 			return false, []byte{}
 		}
 
 		host, port, ok := h.ConvertBindAddressToHostPort(reqPayload.BindUnixSocket)
 		if !ok {
-			log.Errorf("User %v request to proxy invalid target %v.", ctx.User(), reqPayload.BindUnixSocket)
+			logrus.Errorf("User %v request to proxy invalid target %v.", ctx.User(), reqPayload.BindUnixSocket)
 			return false, []byte{}
 		}
 
@@ -156,7 +156,7 @@ func (h *handler) HandleSSHRequest(ctx ssh.Context, srv *ssh.Server, req *gossh.
 				User:   ctx.User(),
 				Target: net.JoinHostPort(host, port),
 			}) {
-				log.Errorf("User %v request to proxy %v, but it's not allowed.", ctx.User(), reqPayload.BindUnixSocket)
+				logrus.Errorf("User %v request to proxy %v, but it's not allowed.", ctx.User(), reqPayload.BindUnixSocket)
 				return false, []byte{}
 			}
 		}
@@ -164,7 +164,7 @@ func (h *handler) HandleSSHRequest(ctx ssh.Context, srv *ssh.Server, req *gossh.
 		socket, _ := h.ConvertHostPortToSocket(host, port)
 		ln, err := net.Listen("unix", socket)
 		if err != nil {
-			log.Errorf("Failed to listen UnixSocket %v: %v", socket, err)
+			logrus.Errorf("Failed to listen UnixSocket %v: %v", socket, err)
 			return false, []byte{}
 		}
 		h.Lock()
@@ -185,7 +185,7 @@ func (h *handler) HandleSSHRequest(ctx ssh.Context, srv *ssh.Server, req *gossh.
 			for {
 				c, err := ln.Accept()
 				if err != nil {
-					log.Errorf("Failed to accept connection for %v: %v", socket, err)
+					logrus.Errorf("Failed to accept connection for %v: %v", socket, err)
 					break
 				}
 
@@ -196,21 +196,21 @@ func (h *handler) HandleSSHRequest(ctx ssh.Context, srv *ssh.Server, req *gossh.
 			h.Unlock()
 		}()
 
-		log.Infof("Forward request in %v is ready", socket)
+		logrus.Infof("Forward request in %v is ready", socket)
 		return true, nil
 
 	case protocol.CancelRequestType:
-		log.Infof("Cancel reverse proxy request for user %v", ctx.User())
+		logrus.Infof("Cancel reverse proxy request for user %v", ctx.User())
 
 		var reqPayload protocol.RemoteForwardCancelRequest
 		if err := gossh.Unmarshal(req.Payload, &reqPayload); err != nil {
-			log.Errorf("Failed to parse payload for %v request: %v", req.Type, err)
+			logrus.Errorf("Failed to parse payload for %v request: %v", req.Type, err)
 			return false, []byte{}
 		}
 
 		socket, ok := h.ConvertBindAddressToSocket(reqPayload.BindUnixSocket)
 		if !ok {
-			log.Errorf("User %v request cancel %v, but it's not allowed.", ctx.User(), reqPayload.BindUnixSocket)
+			logrus.Errorf("User %v request cancel %v, but it's not allowed.", ctx.User(), reqPayload.BindUnixSocket)
 			return false, []byte{}
 		}
 
@@ -219,12 +219,12 @@ func (h *handler) HandleSSHRequest(ctx ssh.Context, srv *ssh.Server, req *gossh.
 		h.Unlock()
 		if ok {
 			ln.Close()
-			log.Infof("Forward request in %v is canneled", socket)
+			logrus.Infof("Forward request in %v is canneled", socket)
 		}
 		return true, nil
 	}
 
-	log.Infof("Unknown request %v from user %v", req.Type, ctx.User())
+	logrus.Infof("Unknown request %v from user %v", req.Type, ctx.User())
 	return false, []byte{}
 }
 
@@ -235,7 +235,7 @@ func handleConnection(c net.Conn, conn *gossh.ServerConn, target string) {
 	})
 	ch, reqs, err := conn.OpenChannel(protocol.ForwardedRequestType, payload)
 	if err != nil {
-		log.Errorf("Failed to open channel for %v: %v", target, err)
+		logrus.Errorf("Failed to open channel for %v: %v", target, err)
 		c.Close()
 		return
 	}

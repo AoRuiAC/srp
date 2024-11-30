@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -13,6 +12,7 @@ import (
 	"github.com/pigeonligh/srp/pkg/proxy/providers"
 	"github.com/pigeonligh/srp/pkg/reverseproxy"
 	"github.com/pigeonligh/srp/pkg/server"
+	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -28,7 +28,7 @@ func main() {
 		"",
 	)
 	if err != nil {
-		log.Fatalln("Error:", err)
+		logrus.Fatalln("Error:", err)
 	}
 	p := proxy.New(
 		auth.UserPublicKeysAuthenticator(auth.PublicKeysDir("examples/auth/proxy_auth")),
@@ -51,6 +51,6 @@ func main() {
 	defer cancel()
 
 	if err := s.Run(ctx); err != nil {
-		log.Fatalln("Error:", err)
+		logrus.Fatalln("Error:", err)
 	}
 }

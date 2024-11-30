@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/ssh"
 	"github.com/pigeonligh/srp/pkg/auth"
 	"github.com/pigeonligh/srp/pkg/protocol"
+	"github.com/sirupsen/logrus"
 	gossh "golang.org/x/crypto/ssh"
 )
 
@@ -114,11 +114,11 @@ func (h *handler) GetProxy(ctx ssh.Context, target string) (Proxy, error) {
 }
 
 func (h *handler) HandleProxyfunc(srv *ssh.Server, conn *gossh.ServerConn, newChan gossh.NewChannel, ctx ssh.Context) {
-	log.Infof("Handle direct-tcpip for user %v in %v", ctx.User(), ctx.SessionID())
+	logrus.Infof("Handle direct-tcpip for user %v in %v", ctx.User(), ctx.SessionID())
 
 	ch, _, err := newChan.Accept()
 	if err != nil {
-		log.Errorf("Cannot accept channel for %v: %v", ctx.SessionID(), err)
+		logrus.Errorf("Cannot accept channel for %v: %v", ctx.SessionID(), err)
 		return
 	}
 	defer ch.Close()
@@ -126,24 +126,24 @@ func (h *handler) HandleProxyfunc(srv *ssh.Server, conn *gossh.ServerConn, newCh
 	var payload protocol.DirectPayload
 	err = gossh.Unmarshal(newChan.ExtraData(), &payload)
 	if err != nil {
-		log.Errorf("Cannot accept extra data for %v: %v", ctx.SessionID(), err)
+		logrus.Errorf("Cannot accept extra data for %v: %v", ctx.SessionID(), err)
 		return
 	}
-	log.Infof("Payload for session %v: %v", ctx.SessionID(), payload)
+	logrus.Infof("Payload for session %v: %v", ctx.SessionID(), payload)
 
 	proxy, err := h.GetProxy(ctx, net.JoinHostPort(payload.Host, fmt.Sprint(payload.Port)))
 	if err != nil {
-		log.Errorf("Cannot create proxy for %v: %v", ctx.SessionID(), err)
+		logrus.Errorf("Cannot create proxy for %v: %v", ctx.SessionID(), err)
 		return
 	}
 
-	log.Infof("Proxy created for session %v.", ctx.SessionID())
+	logrus.Infof("Proxy created for session %v.", ctx.SessionID())
 	err = proxy.Proxy(ctx, ch, ch)
 	if err != nil {
-		log.Errorf("Cannot handle proxy for %v: %v", ctx.SessionID(), err)
+		logrus.Errorf("Cannot handle proxy for %v: %v", ctx.SessionID(), err)
 		return
 	}
 
-	log.Infof("Proxy done for session %v.", ctx.SessionID())
+	logrus.Infof("Proxy done for session %v.", ctx.SessionID())
 	<-ctx.Done()
 }
