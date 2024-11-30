@@ -7,7 +7,7 @@ import (
 	"net"
 	"sync"
 
-	"github.com/pigeonligh/srp/pkg/dialer"
+	"github.com/pigeonligh/srp/pkg/nets"
 	gossh "golang.org/x/crypto/ssh"
 	"golang.org/x/sync/errgroup"
 )
@@ -18,10 +18,10 @@ type Connection interface {
 
 type sshConnection struct {
 	config ConnConfig
-	dialer dialer.SSHDialer
+	dialer nets.SSHDialer
 }
 
-func NewSSHConnection(config ConnConfig, dialer dialer.SSHDialer) Connection {
+func NewSSHConnection(config ConnConfig, dialer nets.SSHDialer) Connection {
 	return &sshConnection{
 		config: config,
 		dialer: dialer,
@@ -135,7 +135,7 @@ func handleForward(
 	}
 
 	go func() {
-		err := dialer.HandleListener(l, func(c net.Conn) {
+		err := nets.HandleListener(l, func(c net.Conn) {
 			conn, err := dial(c)
 			if err != nil {
 				if errLogger != nil {

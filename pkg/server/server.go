@@ -2,14 +2,12 @@ package server
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"time"
 
-	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/ssh"
 	"github.com/charmbracelet/wish"
 	"github.com/charmbracelet/wish/logging"
+	"github.com/pigeonligh/srp/pkg/nets"
 	"github.com/pigeonligh/srp/pkg/proxy"
 	"github.com/pigeonligh/srp/pkg/reverseproxy"
 )
@@ -83,31 +81,5 @@ func (s *server) Run(ctx context.Context) error {
 		return fmt.Errorf("create SSH server: %w", err)
 	}
 
-	var serverErr error
-	done := make(chan struct{}, 1)
-
-	go func() {
-		<-ctx.Done()
-		done <- struct{}{}
-	}()
-
-	go func() {
-		log.Info("Starting SSH server")
-		if err = srv.ListenAndServe(); err != nil && !errors.Is(err, ssh.ErrServerClosed) {
-			log.Error("Failed to run SSH server", "error", err)
-			serverErr = err
-			done <- struct{}{}
-		}
-	}()
-
-	<-done
-
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	log.Info("Stopping SSH server")
-	if err := srv.Shutdown(ctx); err != nil && !errors.Is(err, ssh.ErrServerClosed) {
-		log.Error("Could not stop server", "error", err)
-	}
-	return serverErr
+	return nets.RunNetServer(ctx, srv, nil)
 }

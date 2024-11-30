@@ -1,4 +1,4 @@
-package https
+package nets
 
 import (
 	"context"
@@ -10,8 +10,8 @@ type SocketHandler interface {
 	ConvertHostPortToSocket(host, port string) (string, bool)
 }
 
-func DialFromSocketHandler(h SocketHandler) func(ctx context.Context, network, addr string) (net.Conn, error) {
-	return func(ctx context.Context, network, addr string) (net.Conn, error) {
+func SocketsDialer(h SocketHandler) NetDialer {
+	return NetDialerFunc(func(ctx context.Context, network, addr string) (net.Conn, error) {
 		host, port, err := net.SplitHostPort(addr)
 		if err != nil {
 			return nil, err
@@ -22,5 +22,5 @@ func DialFromSocketHandler(h SocketHandler) func(ctx context.Context, network, a
 		}
 		d := net.Dialer{}
 		return d.DialContext(ctx, "unix", socket)
-	}
+	})
 }

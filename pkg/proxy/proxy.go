@@ -7,7 +7,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/pigeonligh/srp/pkg/dialer"
+	"github.com/pigeonligh/srp/pkg/nets"
 )
 
 type Proxy interface {
@@ -18,7 +18,7 @@ type Proxy interface {
 type directProxy struct {
 	network string
 	address string
-	dialer  dialer.NetDialer
+	dialer  nets.NetDialer
 }
 
 func (p directProxy) Dial(ctx context.Context) (net.Conn, error) {
@@ -40,10 +40,10 @@ func (p directProxy) Proxy(ctx context.Context, r io.Reader, w io.Writer) error 
 }
 
 func Direct(network string, address string) Proxy {
-	return directProxy{network: network, address: address, dialer: dialer.DefaultNetDialer}
+	return directProxy{network: network, address: address, dialer: nets.DefaultNetDialer}
 }
 
-func DirectWithDialer(network string, address string, dialer dialer.NetDialer) Proxy {
+func DirectWithDialer(network string, address string, dialer nets.NetDialer) Proxy {
 	return directProxy{network: network, address: address, dialer: dialer}
 }
 

@@ -1,4 +1,4 @@
-package dialer
+package nets
 
 import (
 	"context"
@@ -33,9 +33,14 @@ func (ld listenDialer) DialContext(ctx context.Context, network, addr string) (n
 	c1, c2 := net.Pipe()
 	select {
 	case ld <- c1:
+		go func() {
+			<-ctx.Done()
+			_ = c1.Close()
+		}()
 		return c2, nil
 
 	default:
+		_ = c1.Close()
 		return nil, net.ErrClosed
 	}
 }
