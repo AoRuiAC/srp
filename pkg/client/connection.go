@@ -39,15 +39,16 @@ func (c *sshConnection) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	defer func() {
-		_ = client.Close()
-	}()
 
 	errCh := make(chan error)
 	defer close(errCh)
 
 	var wg sync.WaitGroup
 	defer wg.Wait()
+
+	defer func() {
+		_ = client.Close()
+	}()
 
 	for _, proxy := range c.config.Proxies {
 		wg.Add(1)
@@ -97,7 +98,7 @@ func handleSSHProxy(client *gossh.Client, proxy ProxyConfig) error {
 				return client.ListenUnix(fmt.Sprintf("/%v/%v", proxy.RemoteHost, proxy.RemotePort))
 			},
 			func(c net.Conn) (net.Conn, error) {
-				network := c.RemoteAddr().Network()
+				network := proxy.Network
 				address := net.JoinHostPort(proxy.LocalHost, proxy.LocalPort)
 				return net.Dial(network, address)
 			},
