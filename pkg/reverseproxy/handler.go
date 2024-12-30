@@ -27,6 +27,9 @@ type Handler interface {
 	nets.SocketHandler
 	ConvertBindAddressToHostPort(bindAddress string) (string, string, bool)
 	ConvertBindAddressToSocket(bindAddress string) (string, bool)
+
+	SocketList() []string
+	AddEventHandler(EventHandler)
 }
 
 type handler struct {
@@ -36,6 +39,8 @@ type handler struct {
 
 	forwards map[string]net.Listener // uid => listener
 	sync.Mutex
+
+	eventHandlers EventHandlers
 }
 
 func New(authenticator auth.Authenticator, authorizer auth.Authorizer, unixDirectory string) (Handler, error) {
@@ -58,6 +63,8 @@ func New(authenticator auth.Authenticator, authorizer auth.Authorizer, unixDirec
 		unixDirectory: unixDirectory,
 
 		forwards: make(map[string]net.Listener),
+
+		eventHandlers: make(EventHandlers, 0),
 	}, nil
 }
 
@@ -127,6 +134,21 @@ func (h *handler) SocketAlive(socket string) bool {
 	return ok
 }
 
+func (h *handler) SocketList() []string {
+	h.Lock()
+	defer h.Unlock()
+
+	ret := make([]string, 0)
+	for socket := range h.forwards {
+		ret = append(ret, socket)
+	}
+	return ret
+}
+
+func (h *handler) AddEventHandler(eh EventHandler) {
+	h.eventHandlers = append(h.eventHandlers, eh)
+}
+
 func (h *handler) HandleSSHRequest(ctx ssh.Context, srv *ssh.Server, req *gossh.Request) (bool, []byte) {
 	authed, _ := ctx.Value(protocol.ContextKeyReverseProxyAuthed).(bool)
 	if !authed {
@@ -169,6 +191,7 @@ func (h *handler) HandleSSHRequest(ctx ssh.Context, srv *ssh.Server, req *gossh.
 		}
 		h.Lock()
 		h.forwards[socket] = ln
+		h.eventHandlers.OnAdd(socket)
 		h.Unlock()
 
 		go func() {
@@ -193,6 +216,7 @@ func (h *handler) HandleSSHRequest(ctx ssh.Context, srv *ssh.Server, req *gossh.
 			}
 			h.Lock()
 			delete(h.forwards, socket)
+			h.eventHandlers.OnRemove(socket)
 			h.Unlock()
 		}()
 
