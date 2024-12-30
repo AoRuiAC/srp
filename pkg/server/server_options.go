@@ -1,6 +1,8 @@
 package server
 
 import (
+	"net"
+
 	"github.com/charmbracelet/ssh"
 	"github.com/charmbracelet/wish"
 	"github.com/pigeonligh/srp/pkg/proxy"
@@ -36,5 +38,11 @@ func WithSSHHandler(h ssh.Handler) Option {
 func WithSSHOptions(options ...ssh.Option) Option {
 	return func(s *server) {
 		s.sshOptions = append(s.sshOptions, options...)
+	}
+}
+
+func WithListener(l net.Listener) Option {
+	return func(s *server) {
+		s.l = l
 	}
 }

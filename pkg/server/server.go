@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"net"
 
 	"github.com/charmbracelet/ssh"
 	"github.com/charmbracelet/wish"
@@ -23,6 +24,7 @@ type server struct {
 	p  proxy.Handler
 	m  wish.Middleware
 	h  ssh.Handler
+	l  net.Listener
 
 	sshOptions []ssh.Option
 }
@@ -82,5 +84,5 @@ func (s *server) Run(ctx context.Context) error {
 	}
 
 	ctx = nets.ContextWithServerName(ctx, s.name)
-	return nets.RunNetServer(ctx, srv, nil)
+	return nets.RunNetServer(ctx, srv, s.l)
 }
