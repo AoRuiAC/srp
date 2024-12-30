@@ -191,7 +191,7 @@ func (h *handler) HandleSSHRequest(ctx ssh.Context, srv *ssh.Server, req *gossh.
 		}
 		h.Lock()
 		h.forwards[socket] = ln
-		h.eventHandlers.OnAdd(socket)
+		h.eventHandlers.OnAdd(host, port)
 		h.Unlock()
 
 		go func() {
@@ -216,7 +216,7 @@ func (h *handler) HandleSSHRequest(ctx ssh.Context, srv *ssh.Server, req *gossh.
 			}
 			h.Lock()
 			delete(h.forwards, socket)
-			h.eventHandlers.OnRemove(socket)
+			h.eventHandlers.OnRemove(host, port)
 			h.Unlock()
 		}()
 
