@@ -3,13 +3,11 @@ package client
 import (
 	"context"
 	"fmt"
-	"io"
 	"net"
 	"sync"
 
 	"github.com/pigeonligh/srp/pkg/nets"
 	gossh "golang.org/x/crypto/ssh"
-	"golang.org/x/sync/errgroup"
 )
 
 type Connection interface {
@@ -148,7 +146,7 @@ func handleForward(
 				_ = conn.Close()
 			}()
 
-			if err := handleConnections(c, conn); err != nil {
+			if err := nets.HandleConnections(c, conn); err != nil {
 				if errLogger != nil {
 					errLogger(err)
 				}
@@ -159,30 +157,4 @@ func handleForward(
 		}
 	}()
 	return <-errCh
-}
-
-func handleConnections(c1, c2 net.Conn) error {
-	var pipes errgroup.Group
-	pipes.Go(func() error {
-		_, err := io.Copy(c1, c2)
-		safeCloseConn(c1)
-		return err
-	})
-	pipes.Go(func() error {
-		_, err := io.Copy(c2, c1)
-		safeCloseConn(c2)
-		return err
-	})
-
-	return pipes.Wait()
-}
-
-func safeCloseConn(c net.Conn) {
-	if cw, ok := c.(interface {
-		CloseWrite() error
-	}); ok {
-		_ = cw.CloseWrite()
-	} else {
-		_ = c.Close()
-	}
 }

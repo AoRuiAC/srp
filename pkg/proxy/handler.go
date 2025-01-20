@@ -6,6 +6,7 @@ import (
 
 	"github.com/charmbracelet/ssh"
 	"github.com/pigeonligh/srp/pkg/auth"
+	"github.com/pigeonligh/srp/pkg/nets"
 	"github.com/pigeonligh/srp/pkg/protocol"
 	"github.com/sirupsen/logrus"
 	gossh "golang.org/x/crypto/ssh"
@@ -138,7 +139,12 @@ func (h *handler) HandleProxyfunc(srv *ssh.Server, conn *gossh.ServerConn, newCh
 	}
 
 	logrus.Infof("Proxy created for session %v.", ctx.SessionID())
-	err = proxy.Proxy(ctx, ch, ch)
+	c, err := proxy.Dial(ctx)
+	if err != nil {
+		logrus.Errorf("Cannot dial proxy for %v: %v", ctx.SessionID(), err)
+		return
+	}
+	err = nets.HandleConnections(c, ch)
 	if err != nil {
 		logrus.Errorf("Cannot handle proxy for %v: %v", ctx.SessionID(), err)
 		return

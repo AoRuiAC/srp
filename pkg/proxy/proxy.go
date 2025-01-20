@@ -2,8 +2,6 @@ package proxy
 
 import (
 	"context"
-	"fmt"
-	"io"
 	"net"
 	"time"
 
@@ -12,7 +10,6 @@ import (
 
 type Proxy interface {
 	Dial(ctx context.Context) (net.Conn, error)
-	Proxy(ctx context.Context, r io.Reader, w io.Writer) error
 }
 
 type directProxy struct {
@@ -23,20 +20,6 @@ type directProxy struct {
 
 func (p directProxy) Dial(ctx context.Context) (net.Conn, error) {
 	return p.dialer.DialContext(ctx, p.network, p.address)
-}
-
-func (p directProxy) Proxy(ctx context.Context, r io.Reader, w io.Writer) error {
-	c, err := p.Dial(ctx)
-	if err != nil {
-		return fmt.Errorf("connecting to %v://%v: %w", p.network, p.address, err)
-	}
-	defer c.Close()
-
-	go func() {
-		_, _ = io.Copy(c, r)
-	}()
-	_, _ = io.Copy(w, c)
-	return nil
 }
 
 func Direct(network string, address string) Proxy {
@@ -51,32 +34,18 @@ func UnixSocket(socket string) Proxy {
 	return Direct("unix", socket)
 }
 
-type funcProxy struct {
-	dial  func(ctx context.Context) (net.Conn, error)
-	proxy func(ctx context.Context, r io.Reader, w io.Writer) error
-}
+type funcProxy func(ctx context.Context) (net.Conn, error)
 
-func (p funcProxy) Dial(ctx context.Context) (net.Conn, error) {
-	return p.dial(ctx)
-}
-
-func (p funcProxy) Proxy(ctx context.Context, r io.Reader, w io.Writer) error {
-	return p.proxy(ctx, r, w)
+func (f funcProxy) Dial(ctx context.Context) (net.Conn, error) {
+	return f(ctx)
 }
 
 func ProxyWithTimeout(p Proxy, timeout time.Duration) Proxy {
-	return funcProxy{
-		dial: func(ctx context.Context) (net.Conn, error) {
-			ctx, cancel := context.WithTimeout(ctx, timeout)
-			defer cancel()
-			return p.Dial(ctx)
-		},
-		proxy: func(ctx context.Context, r io.Reader, w io.Writer) error {
-			ctx, cancel := context.WithTimeout(ctx, timeout)
-			defer cancel()
-			return p.Proxy(ctx, r, w)
-		},
-	}
+	return funcProxy(func(ctx context.Context) (net.Conn, error) {
+		ctx, cancel := context.WithTimeout(ctx, timeout)
+		defer cancel()
+		return p.Dial(ctx)
+	})
 }
 
 func ProxyWithReadiness(p Proxy, readiness func(context.Context) bool, interval time.Duration) Proxy {
@@ -102,18 +71,10 @@ func ProxyWithReadiness(p Proxy, readiness func(context.Context) bool, interval 
 		return nil
 	}
 
-	return funcProxy{
-		dial: func(ctx context.Context) (net.Conn, error) {
-			if err := wait(ctx); err != nil {
-				return nil, err
-			}
-			return p.Dial(ctx)
-		},
-		proxy: func(ctx context.Context, r io.Reader, w io.Writer) error {
-			if err := wait(ctx); err != nil {
-				return err
-			}
-			return p.Proxy(ctx, r, w)
-		},
-	}
+	return funcProxy(func(ctx context.Context) (net.Conn, error) {
+		if err := wait(ctx); err != nil {
+			return nil, err
+		}
+		return p.Dial(ctx)
+	})
 }
