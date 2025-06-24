@@ -15,7 +15,7 @@ func (s *server) channelOption(srv *ssh.Server) error {
 	if srv.ChannelHandlers == nil {
 		srv.ChannelHandlers = make(map[string]ssh.ChannelHandler)
 	}
-	srv.ChannelHandlers["direct-tcpip"] = s.p.HandleProxyfunc
+	srv.ChannelHandlers["direct-tcpip"] = s.p.HandleProxy
 	srv.ChannelHandlers["session"] = ssh.DefaultSessionHandler
 	return nil
 }

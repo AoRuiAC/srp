@@ -16,7 +16,7 @@ type Handler interface {
 	PasswordHandler() ssh.PasswordHandler
 	PublicKeyHandler() ssh.PublicKeyHandler
 
-	HandleProxyfunc(srv *ssh.Server, conn *gossh.ServerConn, newChan gossh.NewChannel, ctx ssh.Context)
+	HandleProxy(srv *ssh.Server, conn *gossh.ServerConn, newChan gossh.NewChannel, ctx ssh.Context)
 }
 
 type handler struct {
@@ -24,6 +24,7 @@ type handler struct {
 	authorizer    auth.Authorizer
 	provider      ProxyProvider
 	cacheEnabled  bool
+	callbacks     ProxyCallbacks
 }
 
 func New(authenticator auth.Authenticator, authorizer auth.Authorizer, provider ProxyProvider, cacheEnabled bool) Handler {
@@ -33,6 +34,14 @@ func New(authenticator auth.Authenticator, authorizer auth.Authorizer, provider 
 		provider:      provider,
 		cacheEnabled:  cacheEnabled,
 	}
+}
+
+func NewWithOptions(options ...Option) Handler {
+	h := &handler{}
+	for _, opt := range options {
+		opt(h)
+	}
+	return h
 }
 
 func (h *handler) PasswordHandler() ssh.PasswordHandler {
@@ -105,6 +114,10 @@ func (h *handler) GetProxy(ctx ssh.Context, target string) (Proxy, error) {
 		}
 	}
 
+	if h.provider == nil {
+		return nil, fmt.Errorf("proxy provider is not set")
+	}
+
 	proxy, err := h.provider.ProxyProvide(ctx, target)
 	if err != nil {
 		cachedResult = err
@@ -114,7 +127,7 @@ func (h *handler) GetProxy(ctx ssh.Context, target string) (Proxy, error) {
 	return proxy, nil
 }
 
-func (h *handler) HandleProxyfunc(srv *ssh.Server, conn *gossh.ServerConn, newChan gossh.NewChannel, ctx ssh.Context) {
+func (h *handler) HandleProxy(srv *ssh.Server, conn *gossh.ServerConn, newChan gossh.NewChannel, ctx ssh.Context) {
 	logrus.Infof("Handle direct-tcpip for user %v in %v", ctx.User(), ctx.SessionID())
 
 	ch, _, err := newChan.Accept()
@@ -130,26 +143,33 @@ func (h *handler) HandleProxyfunc(srv *ssh.Server, conn *gossh.ServerConn, newCh
 		logrus.Errorf("Cannot accept extra data for %v: %v", ctx.SessionID(), err)
 		return
 	}
+	h.callbacks.OnProxyChannelAccepted(ctx, payload)
 	logrus.Infof("Payload for session %v: %v", ctx.SessionID(), payload)
 
 	proxy, err := h.GetProxy(ctx, net.JoinHostPort(payload.Host, fmt.Sprint(payload.Port)))
 	if err != nil {
+		h.callbacks.OnProxyCreateFailed(ctx, payload, err)
 		logrus.Errorf("Cannot create proxy for %v: %v", ctx.SessionID(), err)
 		return
 	}
 
+	h.callbacks.OnProxyCreated(ctx, payload)
 	logrus.Infof("Proxy created for session %v.", ctx.SessionID())
 	c, err := proxy.Dial(ctx)
 	if err != nil {
+		h.callbacks.OnProxyDialFailed(ctx, payload, err)
 		logrus.Errorf("Cannot dial proxy for %v: %v", ctx.SessionID(), err)
 		return
 	}
+	h.callbacks.OnProxyDialed(ctx, payload)
 	err = nets.HandleConnections(c, ch)
 	if err != nil {
+		h.callbacks.OnProxyConnectionFailed(ctx, payload, err)
 		logrus.Errorf("Cannot handle proxy for %v: %v", ctx.SessionID(), err)
 		return
 	}
 
+	h.callbacks.OnProxyConnectionDone(ctx, payload)
 	logrus.Infof("Proxy done for session %v.", ctx.SessionID())
 	<-ctx.Done()
 }
