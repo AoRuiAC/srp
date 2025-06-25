@@ -130,30 +130,36 @@ func (h *handler) GetProxy(ctx ssh.Context, target string) (Proxy, error) {
 func (h *handler) HandleProxy(srv *ssh.Server, conn *gossh.ServerConn, newChan gossh.NewChannel, ctx ssh.Context) {
 	logrus.Infof("Handle direct-tcpip for user %v in %v", ctx.User(), ctx.SessionID())
 
-	ch, _, err := newChan.Accept()
-	if err != nil {
-		logrus.Errorf("Cannot accept channel for %v: %v", ctx.SessionID(), err)
-		return
-	}
-	defer ch.Close()
-
 	var payload protocol.DirectPayload
-	err = gossh.Unmarshal(newChan.ExtraData(), &payload)
+	err := gossh.Unmarshal(newChan.ExtraData(), &payload)
 	if err != nil {
 		logrus.Errorf("Cannot accept extra data for %v: %v", ctx.SessionID(), err)
 		return
 	}
-	h.callbacks.OnProxyChannelAccepted(ctx, payload)
 	logrus.Infof("Payload for session %v: %v", ctx.SessionID(), payload)
 
 	proxy, err := h.GetProxy(ctx, net.JoinHostPort(payload.Host, fmt.Sprint(payload.Port)))
 	if err != nil {
+		rejectErr := newChan.Reject(gossh.Prohibited, fmt.Sprintf("Cannot get proxy: %v", err))
+		if rejectErr != nil {
+			logrus.Errorf("Cannot reject channel for %v: %v", ctx.SessionID(), rejectErr)
+		}
+
 		h.callbacks.OnProxyCreateFailed(ctx, payload, err)
 		logrus.Errorf("Cannot create proxy for %v: %v", ctx.SessionID(), err)
 		return
 	}
-
 	h.callbacks.OnProxyCreated(ctx, payload)
+
+	ch, _, err := newChan.Accept()
+	if err != nil {
+		h.callbacks.OnProxyChannelAcceptFailed(ctx, payload, err)
+		logrus.Errorf("Cannot accept channel for %v: %v", ctx.SessionID(), err)
+		return
+	}
+	defer ch.Close()
+	h.callbacks.OnProxyChannelAccepted(ctx, payload)
+
 	logrus.Infof("Proxy created for session %v.", ctx.SessionID())
 	c, err := proxy.Dial(ctx)
 	if err != nil {

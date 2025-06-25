@@ -6,20 +6,14 @@ import (
 )
 
 type ProxyCallbacks struct {
-	OnProxyChannelAcceptedFunc  func(ctx ssh.Context, payload protocol.DirectPayload)
-	OnProxyCreatedFunc          func(ctx ssh.Context, payload protocol.DirectPayload)
-	OnProxyCreateFailedFunc     func(ctx ssh.Context, payload protocol.DirectPayload, err error)
-	OnProxyDialedFunc           func(ctx ssh.Context, payload protocol.DirectPayload)
-	OnProxyDialFailedFunc       func(ctx ssh.Context, payload protocol.DirectPayload, err error)
-	OnProxyConnectionDoneFunc   func(ctx ssh.Context, payload protocol.DirectPayload)
-	OnProxyConnectionFailedFunc func(ctx ssh.Context, payload protocol.DirectPayload, err error)
-}
-
-func (c *ProxyCallbacks) OnProxyChannelAccepted(ctx ssh.Context, payload protocol.DirectPayload) {
-	if c == nil || c.OnProxyChannelAcceptedFunc == nil {
-		return
-	}
-	c.OnProxyChannelAcceptedFunc(ctx, payload)
+	OnProxyCreatedFunc             func(ctx ssh.Context, payload protocol.DirectPayload)
+	OnProxyCreateFailedFunc        func(ctx ssh.Context, payload protocol.DirectPayload, err error)
+	OnProxyChannelAcceptedFunc     func(ctx ssh.Context, payload protocol.DirectPayload)
+	OnProxyChannelAcceptFailedFunc func(ctx ssh.Context, payload protocol.DirectPayload, err error)
+	OnProxyDialedFunc              func(ctx ssh.Context, payload protocol.DirectPayload)
+	OnProxyDialFailedFunc          func(ctx ssh.Context, payload protocol.DirectPayload, err error)
+	OnProxyConnectionDoneFunc      func(ctx ssh.Context, payload protocol.DirectPayload)
+	OnProxyConnectionFailedFunc    func(ctx ssh.Context, payload protocol.DirectPayload, err error)
 }
 
 func (c *ProxyCallbacks) OnProxyCreated(ctx ssh.Context, payload protocol.DirectPayload) {
@@ -34,6 +28,20 @@ func (c *ProxyCallbacks) OnProxyCreateFailed(ctx ssh.Context, payload protocol.D
 		return
 	}
 	c.OnProxyCreateFailedFunc(ctx, payload, err)
+}
+
+func (c *ProxyCallbacks) OnProxyChannelAccepted(ctx ssh.Context, payload protocol.DirectPayload) {
+	if c == nil || c.OnProxyChannelAcceptedFunc == nil {
+		return
+	}
+	c.OnProxyChannelAcceptedFunc(ctx, payload)
+}
+
+func (c *ProxyCallbacks) OnProxyChannelAcceptFailed(ctx ssh.Context, payload protocol.DirectPayload, err error) {
+	if c == nil || c.OnProxyChannelAcceptFailedFunc == nil {
+		return
+	}
+	c.OnProxyChannelAcceptFailedFunc(ctx, payload, err)
 }
 
 func (c *ProxyCallbacks) OnProxyDialed(ctx ssh.Context, payload protocol.DirectPayload) {
