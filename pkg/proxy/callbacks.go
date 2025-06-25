@@ -6,14 +6,30 @@ import (
 )
 
 type ProxyCallbacks struct {
+	OnHandleProxyFunc     func(ctx ssh.Context)
+	OnHandleProxyDoneFunc func(ctx ssh.Context)
+
 	OnProxyCreatedFunc             func(ctx ssh.Context, payload protocol.DirectPayload)
 	OnProxyCreateFailedFunc        func(ctx ssh.Context, payload protocol.DirectPayload, err error)
 	OnProxyChannelAcceptedFunc     func(ctx ssh.Context, payload protocol.DirectPayload)
 	OnProxyChannelAcceptFailedFunc func(ctx ssh.Context, payload protocol.DirectPayload, err error)
 	OnProxyDialedFunc              func(ctx ssh.Context, payload protocol.DirectPayload)
 	OnProxyDialFailedFunc          func(ctx ssh.Context, payload protocol.DirectPayload, err error)
-	OnProxyConnectionDoneFunc      func(ctx ssh.Context, payload protocol.DirectPayload)
-	OnProxyConnectionFailedFunc    func(ctx ssh.Context, payload protocol.DirectPayload, err error)
+	OnProxyConnectionDoneFunc      func(ctx ssh.Context, payload protocol.DirectPayload, err error)
+}
+
+func (c *ProxyCallbacks) OnHandleProxy(ctx ssh.Context) {
+	if c == nil || c.OnHandleProxyFunc == nil {
+		return
+	}
+	c.OnHandleProxyFunc(ctx)
+}
+
+func (c *ProxyCallbacks) OnHandleProxyDone(ctx ssh.Context) {
+	if c == nil || c.OnHandleProxyDoneFunc == nil {
+		return
+	}
+	c.OnHandleProxyDoneFunc(ctx)
 }
 
 func (c *ProxyCallbacks) OnProxyCreated(ctx ssh.Context, payload protocol.DirectPayload) {
@@ -58,16 +74,9 @@ func (c *ProxyCallbacks) OnProxyDialFailed(ctx ssh.Context, payload protocol.Dir
 	c.OnProxyDialFailedFunc(ctx, payload, err)
 }
 
-func (c *ProxyCallbacks) OnProxyConnectionDone(ctx ssh.Context, payload protocol.DirectPayload) {
+func (c *ProxyCallbacks) OnProxyConnectionDone(ctx ssh.Context, payload protocol.DirectPayload, err error) {
 	if c == nil || c.OnProxyConnectionDoneFunc == nil {
 		return
 	}
-	c.OnProxyConnectionDoneFunc(ctx, payload)
-}
-
-func (c *ProxyCallbacks) OnProxyConnectionFailed(ctx ssh.Context, payload protocol.DirectPayload, err error) {
-	if c == nil || c.OnProxyConnectionFailedFunc == nil {
-		return
-	}
-	c.OnProxyConnectionFailedFunc(ctx, payload, err)
+	c.OnProxyConnectionDoneFunc(ctx, payload, err)
 }
