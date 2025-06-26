@@ -22,6 +22,21 @@ func GetServerNameFromContext(ctx context.Context) (string, bool) {
 	return name, ok
 }
 
+type contextStopTimeout struct{}
+
+func ContextWithStopTimeout(ctx context.Context, timeout time.Duration) context.Context {
+	return context.WithValue(ctx, contextStopTimeout{}, timeout)
+}
+
+func GetStopTimeoutFromContext(ctx context.Context) time.Duration {
+	obj := ctx.Value(contextStopTimeout{})
+	timeout, ok := obj.(time.Duration)
+	if !ok || timeout < 0 {
+		return 30 * time.Second // Default timeout
+	}
+	return timeout
+}
+
 type NetServer interface {
 	Serve(l net.Listener) error
 	ListenAndServe() error
@@ -59,7 +74,7 @@ func RunNetServer(ctx context.Context, s NetServer, l net.Listener) error {
 	<-done
 	logger.Info("Server stopping")
 
-	stopCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	stopCtx, cancel := context.WithTimeout(context.Background(), GetStopTimeoutFromContext(ctx))
 	defer cancel()
 
 	if err := s.Shutdown(stopCtx); err != nil {
